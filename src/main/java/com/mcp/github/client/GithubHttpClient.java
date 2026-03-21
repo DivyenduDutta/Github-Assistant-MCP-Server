@@ -23,11 +23,11 @@ public class GithubHttpClient {
     @Value("${github.token}")
     private String token;
 
-    public GithubHttpClient() {
-        this.httpClient = HttpClient.newHttpClient();
-        this.objectMapper = new ObjectMapper();
+    public GithubHttpClient(HttpClient httpClient, ObjectMapper objectMapper) {
+        this.httpClient = httpClient;
+        this.objectMapper = objectMapper;
     }
-
+    
     /**
      * Fetches a list of issues from a specified GitHub repository. It constructs the appropriate API URL,
      * sends an authenticated GET request, and parses the JSON response into a JsonNode for further processing.
