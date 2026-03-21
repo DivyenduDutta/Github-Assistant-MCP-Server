@@ -10,6 +10,11 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
+/**
+ * A simple HTTP client for interacting with the GitHub API. It handles authentication using a personal access token
+ * and provides methods to fetch data from GitHub, such as issues from a repository. The client uses Java's built-in
+ * HttpClient for making HTTP requests and Jackson's ObjectMapper for parsing JSON responses.
+ */
 @Component
 public class GithubHttpClient {
     private final HttpClient httpClient;
@@ -23,6 +28,15 @@ public class GithubHttpClient {
         this.objectMapper = new ObjectMapper();
     }
 
+    /**
+     * Fetches a list of issues from a specified GitHub repository. It constructs the appropriate API URL,
+     * sends an authenticated GET request, and parses the JSON response into a JsonNode for further processing.
+     *
+     * @param owner The owner of the repository (e.g., "octocat").
+     * @param repo  The name of the repository (e.g., "Hello-World").
+     * @return A JsonNode representing the list of issues returned by the GitHub API.
+     * @throws RuntimeException if there is an error during the HTTP request or JSON parsing.
+     */
     public JsonNode getIssues(String owner, String repo) {
         try {
             String url = String.format(

@@ -10,6 +10,10 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Service layer that interacts with the GithubHttpClient to fetch and process data from GitHub's API.
+ * It transforms raw JSON responses into structured Issue objects for easier consumption by other parts of the application.
+ */
 @Service
 public class GithubService {
 
@@ -18,7 +22,14 @@ public class GithubService {
     public GithubService(GithubHttpClient client) {
         this.client = client;
     }
-
+    
+    /**
+     * Fetches a list of open issues from a specified GitHub repository and transforms them into `Issue` objects.
+     *
+     * @param owner The owner of the repository (e.g., "octocat").
+     * @param repo  The name of the repository (e.g., "Hello-World").
+     * @return A list of Issue objects representing the open issues in the repository.
+     */
     public List<Issue> listIssues(String owner, String repo) {
         JsonNode response = client.getIssues(owner, repo);
 
