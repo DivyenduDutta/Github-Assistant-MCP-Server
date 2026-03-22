@@ -14,7 +14,7 @@
     <a href="#introduction">Introduction</a> •
     <a href="#architecture">Architecture</a> •
     <a href="#setup">Setup</a> •
-    <a href="#demo">Results</a>
+    <a href="#demo">Demo</a>
   </p>
 </div>
 
@@ -59,6 +59,6 @@ mvnw pmd:check
 
 Start the server using the below command:
 ```bash
-mvnw spring-boot:run
+mvn spring-boot:run
 ```
 
