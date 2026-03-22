@@ -66,7 +66,7 @@ public class GithubHttpClient {
             return objectMapper.readTree(response.body());
 
         } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch issues from GitHub", e);
+            throw new RuntimeException("Failed to fetch issues from GitHub " + e.getMessage());
         }
     }
 }
