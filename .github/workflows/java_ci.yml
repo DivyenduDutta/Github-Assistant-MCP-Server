@@ -1,0 +1,33 @@
+name: CI 
+
+on:
+  push:
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        run: mvn -B clean verify --file pom.xml
+
+      - name: Run Spotless (lint check)
+        run: mvn spotless:check
+
+      - name: Run SpotBugs (static analysis)
+        run: mvn spotbugs:check
+
+      - name: Run PMD (code analysis)
+        run: mvn pmd:check
