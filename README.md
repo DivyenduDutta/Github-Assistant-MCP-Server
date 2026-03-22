@@ -4,6 +4,7 @@
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=DivyenduDutta_Github-Assistant-MCP-Server&metric=bugs)](https://sonarcloud.io/dashboard?id=DivyenduDutta_Github-Assistant-MCP-Server)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=DivyenduDutta_Github-Assistant-MCP-Server&metric=coverage)](https://sonarcloud.io/dashboard?id=DivyenduDutta_Github-Assistant-MCP-Server)
 [![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=DivyenduDutta_Github-Assistant-MCP-Server&metric=ncloc)](https://sonarcloud.io/dashboard?id=DivyenduDutta_Github-Assistant-MCP-Server)
+[![CI Status](https://github.com/DivyenduDutta/Github-Assistant-MCP-Server/workflows/CI/badge.svg)](https://github.com/DivyenduDutta/Github-Assistant-MCP-Server/actions)
 
 <p><em>An MCP Server written using Java and Spring AI which exposes tools to allow common AI agents to perform various Github related tasks.</em></p>
 
