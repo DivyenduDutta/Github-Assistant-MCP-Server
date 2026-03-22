@@ -1,5 +1,6 @@
 package com.mcp.github.client;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -18,6 +19,11 @@ import tools.jackson.databind.ObjectMapper;
 @Component
 public class GithubHttpClient {
   private final HttpClient httpClient;
+
+  @SuppressFBWarnings(
+      value = "EI_EXPOSE_REP2",
+      justification =
+          "The objectMapper will not be modified outside of this class since its private.")
   private final ObjectMapper objectMapper;
 
   @Value("${github.token}")
