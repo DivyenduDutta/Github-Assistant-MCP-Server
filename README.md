@@ -24,4 +24,35 @@ environment variable named `GITHUB_TOKEN` with a valid Github Personal Access To
 necessary permissions to perform the desired operations on Github. This token will be used by the 
 application to authenticate API requests to Github.
 
+
+### For Developers
+
+Run the below commands in local before pushing code to remote.
+
+#### Code formatting
+```bash
+mvnw spotless:check
+```
+
+If there are formatting issues, run the below command to fix them.
+```bash
+mvnw spotless:apply
+```
+
+#### Static analysis
+```bash
+mvnw spotbugs:check
+```
+
+#### Style/complexity analysis
+```bash
+mvnw pmd:check
+```
+
 ## Demo
+
+Start the server using the below command:
+```bash
+mvnw spring-boot:run
+```
+
