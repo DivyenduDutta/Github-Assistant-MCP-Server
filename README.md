@@ -36,7 +36,7 @@ The tools currently exposed by the MCP server include:
 
 ## Architecture
 
-![architecture diagram](Resources/architecture_diagram.png)
+![architecture diagram](Images/architecture_diagram.png)
 
 ## Setup
 
