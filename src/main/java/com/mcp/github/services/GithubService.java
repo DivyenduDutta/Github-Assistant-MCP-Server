@@ -2,6 +2,8 @@ package com.mcp.github.services;
 
 import com.mcp.github.client.GithubHttpClient;
 import com.mcp.github.models.Issue;
+import com.mcp.github.models.IssueComment;
+import com.mcp.github.models.IssueDetail;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -16,6 +18,8 @@ import tools.jackson.databind.JsonNode;
  */
 @Service
 public class GithubService {
+
+  private static final int STALE_DAYS_THRESHOLD = 30;
 
   private final GithubHttpClient client;
 
@@ -56,5 +60,73 @@ public class GithubService {
     }
 
     return issues;
+  }
+
+  /**
+   * Fetches detailed information about a specific issue from a GitHub repository, including its
+   * title, description, labels, recent comments, and computed metadata like days open and
+   * staleness. It ensures that the requested item is an issue and not a pull request.
+   *
+   * @param owner The owner of the repository (e.g., "octocat").
+   * @param repo The name of the repository (e.g., "Hello-World").
+   * @param issueNumber The number of the issue to fetch details for.
+   * @return An IssueDetail object containing comprehensive information about the specified issue.
+   */
+  public IssueDetail getIssue(String owner, String repo, int issueNumber) {
+
+    JsonNode issueNode = client.getIssue(owner, repo, issueNumber);
+
+    // Skip pull requests (GitHub mixes them in)
+    if (issueNode.has("pull_request")) {
+      throw new RuntimeException("Requested item is a Pull Request, not an Issue");
+    }
+
+    JsonNode commentsNode = client.getIssueComments(owner, repo, issueNumber);
+
+    // Basic fields
+    int number = issueNode.get("number").asInt();
+    String title = issueNode.get("title").asString();
+    String body = issueNode.get("body").asString("");
+    String state = issueNode.get("state").asString();
+    String author = issueNode.get("user").get("login").asString();
+
+    // Labels
+    List<String> labels = new ArrayList<>();
+    for (JsonNode labelNode : issueNode.get("labels")) {
+      labels.add(labelNode.get("name").asString());
+    }
+
+    // Comments
+    List<IssueComment> comments = new ArrayList<>();
+    for (JsonNode commentNode : commentsNode) {
+      String commentAuthor = commentNode.get("user").get("login").asString();
+      String commentBody = commentNode.get("body").asString("");
+      comments.add(new IssueComment(commentAuthor, commentBody));
+    }
+
+    // Limit to first 5 comments for LLM context
+    List<IssueComment> limitedComments = comments.stream().limit(5).toList();
+
+    int commentCount = limitedComments.size();
+
+    // Time calculations
+    String createdAt = issueNode.get("created_at").asString();
+
+    long daysOpen = ChronoUnit.DAYS.between(OffsetDateTime.parse(createdAt), OffsetDateTime.now());
+
+    // Simple "stale" logic
+    boolean isStale = daysOpen > STALE_DAYS_THRESHOLD && commentCount == 0;
+
+    return new IssueDetail(
+        number,
+        title,
+        body,
+        state,
+        author,
+        labels,
+        commentCount,
+        limitedComments,
+        (int) daysOpen,
+        isStale);
   }
 }

@@ -1,6 +1,7 @@
 package com.mcp.github.tools;
 
 import com.mcp.github.models.Issue;
+import com.mcp.github.models.IssueDetail;
 import com.mcp.github.services.GithubService;
 import java.util.List;
 import org.springframework.ai.mcp.annotation.McpTool;
@@ -38,5 +39,29 @@ public class GithubAssistantTools {
       @ToolParam(description = "Repository owner, e.g. 'octocat'") String owner,
       @ToolParam(description = "Repository name, e.g. 'Hello-World'") String repo) {
     return githubService.listIssues(owner, repo);
+  }
+
+  /**
+   * Retrieves detailed information about a specific GitHub issue, including its title, description,
+   * labels, recent comments, and computed metadata such as days open and staleness. This tool is
+   * useful for gaining a comprehensive understanding of an issue's status and history. It takes the
+   * repository owner, name, and issue number as parameters and returns an IssueDetail object
+   * containing all relevant information about the issue.
+   *
+   * @param owner The owner of the repository (e.g., "octocat").
+   * @param repo The name of the repository (e.g., "Hello-World").
+   * @param issueNumber The number of the issue to fetch details for.
+   * @return An IssueDetail object containing comprehensive information about the specified issue.
+   */
+  @McpTool(
+      name = "get_issue",
+      description =
+          "Get full details of a GitHub issue including title, description, labels, recent comments, and computed metadata like days open and staleness.")
+  public IssueDetail getIssue(
+      @ToolParam(description = "Repository owner, e.g. 'octocat'") String owner,
+      @ToolParam(description = "Repository name, e.g. 'Hello-World'") String repo,
+      @ToolParam(description = "Issue number (not pull request number), e.g. 123")
+          int issueNumber) {
+    return githubService.getIssue(owner, repo, issueNumber);
   }
 }

@@ -12,9 +12,9 @@ import tools.jackson.databind.ObjectMapper;
 
 /**
  * A simple HTTP client for interacting with the GitHub API. It handles authentication using a
- * personal access token and provides methods to fetch data from GitHub, such as issues from a
- * repository. The client uses Java's built-in HttpClient for making HTTP requests and Jackson's
- * ObjectMapper for parsing JSON responses.
+ * personal access token and provides methods to fetch data from GitHub. The client uses Java's
+ * built-in HttpClient for making HTTP requests and Jackson's ObjectMapper for parsing JSON
+ * responses.
  */
 @Component
 public class GithubHttpClient {
@@ -35,19 +35,15 @@ public class GithubHttpClient {
   }
 
   /**
-   * Fetches a list of issues from a specified GitHub repository. It constructs the appropriate API
-   * URL, sends an authenticated GET request, and parses the JSON response into a JsonNode for
-   * further processing.
+   * Helper method to perform an authenticated GET request to the GitHub API. It constructs the
+   * request with the necessary headers, sends it, and parses the response into a JsonNode.
    *
-   * @param owner The owner of the repository (e.g., "octocat").
-   * @param repo The name of the repository (e.g., "Hello-World").
-   * @return A JsonNode representing the list of issues returned by the GitHub API.
+   * @param url The URL to send the GET request to.
+   * @return A JsonNode representing the parsed JSON response from the GitHub API.
    * @throws RuntimeException if there is an error during the HTTP request or JSON parsing.
    */
-  public JsonNode getIssues(String owner, String repo) {
+  private JsonNode get(String url) {
     try {
-      String url = String.format("https://api.github.com/repos/%s/%s/issues", owner, repo);
-
       HttpRequest request =
           HttpRequest.newBuilder()
               .uri(URI.create(url))
@@ -67,7 +63,55 @@ public class GithubHttpClient {
       return objectMapper.readTree(response.body());
 
     } catch (Exception e) {
-      throw new RuntimeException("Failed to fetch issues from GitHub " + e.getMessage());
+      throw new RuntimeException("GitHub API call failed" + e.getMessage());
     }
+  }
+
+  /**
+   * Fetches a list of issues from a specified GitHub repository. It constructs the appropriate API
+   * URL, sends an authenticated GET request, and parses the JSON response into a JsonNode for
+   * further processing.
+   *
+   * @param owner The owner of the repository (e.g., "octocat").
+   * @param repo The name of the repository (e.g., "Hello-World").
+   * @return A JsonNode representing the list of issues returned by the GitHub API.
+   */
+  public JsonNode getIssues(String owner, String repo) {
+    String url = String.format("https://api.github.com/repos/%s/%s/issues", owner, repo);
+    return get(url);
+  }
+
+  /**
+   * Fetches the details of a specific issue from a GitHub repository. It constructs the API URL
+   * using the repository owner, name, and issue number, sends an authenticated GET request, and
+   * parses the JSON response into a JsonNode for further processing.
+   *
+   * @param owner The owner of the repository (e.g., "octocat").
+   * @param repo The name of the repository (e.g., "Hello-World").
+   * @param issueNumber The number of the issue to fetch details for.
+   * @return A JsonNode representing the details of the specified issue returned by the GitHub API.
+   */
+  public JsonNode getIssue(String owner, String repo, int issueNumber) {
+    String url =
+        String.format("https://api.github.com/repos/%s/%s/issues/%d", owner, repo, issueNumber);
+    return get(url);
+  }
+
+  /**
+   * Fetches the comments of a specific issue from a GitHub repository. It constructs the API URL
+   * using the repository owner, name, and issue number, sends an authenticated GET request, and
+   * parses the JSON response into a JsonNode for further processing.
+   *
+   * @param owner The owner of the repository (e.g., "octocat").
+   * @param repo The name of the repository (e.g., "Hello-World").
+   * @param issueNumber The number of the issue to fetch comments for.
+   * @return A JsonNode representing the list of comments for the specified issue returned by the
+   *     GitHub API.
+   */
+  public JsonNode getIssueComments(String owner, String repo, int issueNumber) {
+    String url =
+        String.format(
+            "https://api.github.com/repos/%s/%s/issues/%d/comments", owner, repo, issueNumber);
+    return get(url);
   }
 }
