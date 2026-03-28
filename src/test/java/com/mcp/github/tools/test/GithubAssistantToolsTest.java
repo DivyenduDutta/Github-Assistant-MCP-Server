@@ -3,6 +3,8 @@ package com.mcp.github.tools.test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.mcp.github.models.Issue;
+import com.mcp.github.models.IssueComment;
+import com.mcp.github.models.IssueDetail;
 import com.mcp.github.services.GithubService;
 import com.mcp.github.tools.GithubAssistantTools;
 import java.util.List;
@@ -34,5 +36,29 @@ public class GithubAssistantToolsTest {
     assertEquals("Test Issue", result.get(0).title());
 
     Mockito.verify(githubService).listIssues("owner", "repo");
+  }
+
+  @Test
+  void testGetIssue() {
+    IssueDetail mockIssue =
+        new IssueDetail(
+            1,
+            "Test Issue",
+            "open",
+            "open",
+            "testuser",
+            List.of("Feature", "Bug"),
+            1,
+            List.of(new IssueComment("testuser", "This is a test issue comment")),
+            10,
+            false);
+
+    Mockito.when(githubService.getIssue("owner", "repo", 10)).thenReturn(mockIssue);
+
+    IssueDetail issue = tools.getIssue("owner", "repo", 10);
+
+    assertEquals("Feature", issue.labels().get(0));
+
+    Mockito.verify(githubService).getIssue("owner", "repo", 10);
   }
 }
