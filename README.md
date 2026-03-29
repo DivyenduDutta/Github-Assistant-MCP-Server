@@ -29,10 +29,13 @@ especially private repositories, and perform actions such as listing issues, lis
 agents to perform such actions by exposing tools that they can call.
 
 The tools currently exposed by the MCP server include:
-- list_issues: List all issues in a given repository for a given owner.
+- list_issues_limited: List a specific number of issues in a given repository for a given owner.
+- list_issues_default: List a 5 issues in a given repository for a given owner.
 - get_issue: Get details about a specific issue.
 - list_pull_requests: List general details about all PR's (open PR's for now).
 - get_pull_request: Get details about a specific PR.
+
+The philosophy behind designing the MCP tools is : "Agent-friendly, not API-shaped"
 
 ## Architecture
 
