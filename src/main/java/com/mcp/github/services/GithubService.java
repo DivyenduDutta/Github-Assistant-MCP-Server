@@ -20,6 +20,7 @@ import tools.jackson.databind.JsonNode;
 public class GithubService {
 
   private static final int STALE_DAYS_THRESHOLD = 30;
+  private static final int MAX_COMMENTS_FOR_CONTEXT = 5;
 
   private final GithubHttpClient client;
 
@@ -105,7 +106,7 @@ public class GithubService {
     }
 
     // Limit to first 5 comments for LLM context
-    List<IssueComment> limitedComments = comments.stream().limit(5).toList();
+    List<IssueComment> limitedComments = comments.stream().limit(MAX_COMMENTS_FOR_CONTEXT).toList();
 
     int commentCount = limitedComments.size();
 
