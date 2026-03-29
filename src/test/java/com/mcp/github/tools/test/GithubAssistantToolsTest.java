@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import com.mcp.github.models.Issue;
 import com.mcp.github.models.IssueComment;
 import com.mcp.github.models.IssueDetail;
+import com.mcp.github.models.PullRequestSummary;
 import com.mcp.github.services.GithubService;
 import com.mcp.github.tools.GithubAssistantTools;
 import java.util.List;
@@ -77,5 +78,35 @@ public class GithubAssistantToolsTest {
     assertEquals("Feature", issue.labels().get(0));
 
     Mockito.verify(githubService).getIssue("owner", "repo", 10);
+  }
+
+  @Test
+  void testListPullRequests() {
+    List<PullRequestSummary> mockPullRequests =
+        List.of(
+            new PullRequestSummary(
+                1,
+                "Test PR",
+                "open",
+                "testuser",
+                "main",
+                "feature-branch",
+                List.of("Enhancement"),
+                5,
+                10,
+                2,
+                false,
+                false,
+                false));
+
+    Mockito.when(githubService.listPullRequests("owner", "repo", 1, 30))
+        .thenReturn(mockPullRequests);
+
+    List<PullRequestSummary> result = tools.listPullRequests("owner", "repo", null, null);
+
+    assertEquals(1, result.size());
+    assertEquals("Test PR", result.get(0).title());
+
+    Mockito.verify(githubService).listPullRequests("owner", "repo", 1, 30);
   }
 }

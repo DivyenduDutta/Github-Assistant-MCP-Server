@@ -178,4 +178,86 @@ public class GithubHttpClientTest {
 
     assertTrue(ex.getMessage().contains("GitHub API error"));
   }
+
+  @Test
+  void testGetPullRequestsPositive() throws Exception {
+    String mockResponse =
+        """
+                        [
+                            {
+                                "number": 1,
+                                "title": "Test PR 1",
+                                "state": "open",
+                                "user": {"login": "testuser"},
+                                "head": {
+                                    "ref": "feature-branch",
+                                    "sha": "abc123"
+                                },
+                                 "base": {
+                                    "ref": "main",
+                                    "sha": "def456"
+                                },
+                                 "labels": [{"name": "bug"}, {"name": "feature"}],
+                                 "comments": 5,
+                                 "created_at": "2024-01-01T00:00:00Z",
+                                "updated_at": "2024-01-02T00:00:00Z",
+                                "draft": false,
+                                "merged_at": "2024-01-03T00:00:00Z"
+                            },
+                            {
+                                "number": 2,
+                                "title": "Test PR 2",
+                                "state": "closed",
+                                "user": {"login": "testuser2"},
+                                "head": {
+                                    "ref": "bugfix-branch",
+                                    "sha": "abc123"
+                                },
+                                 "base": {
+                                    "ref": "main",
+                                    "sha": "def456"
+                                },
+                                 "labels": [{"name": "bug"}, {"name": "feature"}],
+                                "created_at": "2024-01-01T00:00:00Z",
+                                "updated_at": "2024-01-02T00:00:00Z",
+                                "draft": true,
+                                "merged_at": null
+                            }
+                        ]
+                        """;
+    HttpResponse<String> response = Mockito.mock(HttpResponse.class);
+
+    Mockito.when(response.statusCode()).thenReturn(200);
+    Mockito.when(response.body()).thenReturn(mockResponse);
+
+    Mockito.doReturn(response)
+        .when(httpClient)
+        .send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+
+    JsonNode result = githubHttpClient.getPullRequests("owner", "repo", 1, 10);
+
+    assertNotNull(result);
+    assertTrue(result.isArray());
+    assertEquals(2, result.size());
+    assertEquals("bug", result.get(0).get("labels").asArray().get(0).get("name").asString());
+  }
+
+  @Test
+  void testGetPullRequestsNegative() throws Exception {
+    HttpResponse<String> response = Mockito.mock(HttpResponse.class);
+
+    Mockito.when(response.statusCode()).thenReturn(401);
+    Mockito.when(response.body()).thenReturn("Unauthorized");
+
+    Mockito.doReturn(response)
+        .when(httpClient)
+        .send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> githubHttpClient.getPullRequests("owner", "repo", 1, -1));
+
+    assertTrue(ex.getMessage().contains("page and perPage must be positive"));
+  }
 }

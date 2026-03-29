@@ -20,6 +20,8 @@ import tools.jackson.databind.ObjectMapper;
 public class GithubHttpClient {
   private final HttpClient httpClient;
 
+  private static final String GITHUB_API_BASE_URL = "https://api.github.com";
+
   @SuppressFBWarnings(
       value = "EI_EXPOSE_REP2",
       justification =
@@ -70,30 +72,36 @@ public class GithubHttpClient {
   /**
    * Fetches a list of issues from a specified GitHub repository. It constructs the appropriate API
    * URL, sends an authenticated GET request, and parses the JSON response into a JsonNode for
-   * further processing.
+   * further processing. Retrieves only open issues.
    *
    * @param owner The owner of the repository (e.g., "octocat").
    * @param repo The name of the repository (e.g., "Hello-World").
    * @return A JsonNode representing the list of issues returned by the GitHub API.
    */
   public JsonNode getIssues(String owner, String repo) {
-    String url = String.format("https://api.github.com/repos/%s/%s/issues", owner, repo);
+    String url = String.format(GITHUB_API_BASE_URL + "/repos/%s/%s/issues", owner, repo);
     return get(url);
   }
 
   /**
    * Fetches the details of a specific issue from a GitHub repository. It constructs the API URL
    * using the repository owner, name, and issue number, sends an authenticated GET request, and
-   * parses the JSON response into a JsonNode for further processing.
+   * parses the JSON response into a JsonNode for further processing. Can retrieve details of both
+   * open and closed issues.
    *
    * @param owner The owner of the repository (e.g., "octocat").
    * @param repo The name of the repository (e.g., "Hello-World").
    * @param issueNumber The number of the issue to fetch details for.
    * @return A JsonNode representing the details of the specified issue returned by the GitHub API.
+   * @throws IllegalArgumentException if issueNumber is less than 1.
    */
   public JsonNode getIssue(String owner, String repo, int issueNumber) {
+    if (issueNumber < 1) {
+      throw new IllegalArgumentException("Issue number must be positive");
+    }
+
     String url =
-        String.format("https://api.github.com/repos/%s/%s/issues/%d", owner, repo, issueNumber);
+        String.format(GITHUB_API_BASE_URL + "/repos/%s/%s/issues/%d", owner, repo, issueNumber);
     return get(url);
   }
 
@@ -107,11 +115,45 @@ public class GithubHttpClient {
    * @param issueNumber The number of the issue to fetch comments for.
    * @return A JsonNode representing the list of comments for the specified issue returned by the
    *     GitHub API.
+   * @throws IllegalArgumentException if issueNumber is less than 1.
    */
   public JsonNode getIssueComments(String owner, String repo, int issueNumber) {
+    if (issueNumber < 1) {
+      throw new IllegalArgumentException("Issue number must be positive");
+    }
+
     String url =
         String.format(
-            "https://api.github.com/repos/%s/%s/issues/%d/comments", owner, repo, issueNumber);
+            GITHUB_API_BASE_URL + "/repos/%s/%s/issues/%d/comments", owner, repo, issueNumber);
+    return get(url);
+  }
+
+  /**
+   * Fetches a list of pull requests from a specified GitHub repository. It constructs the API URL
+   * using the repository owner and name, sends an authenticated GET request, and parses the JSON
+   * response into a JsonNode for further processing. Retrieves all pull requests (open and closed)
+   * sorted by last updated time in descending order.
+   *
+   * @param owner The owner of the repository (e.g., "octocat").
+   * @param repo The name of the repository (e.g., "Hello-World").
+   * @param page The page number to fetch (for pagination).
+   * @param perPage The number of pull requests to return per page.
+   * @return A JsonNode representing the list of pull requests returned by the GitHub API.
+   * @throws IllegalArgumentException if page or perPage is less than 1.
+   */
+  public JsonNode getPullRequests(String owner, String repo, int page, int perPage) {
+    if (page < 1 || perPage < 1) {
+      throw new IllegalArgumentException("page and perPage must be positive");
+    }
+
+    String url =
+        String.format(
+            GITHUB_API_BASE_URL
+                + "/repos/%s/%s/pulls?state=all&sort=updated&direction=desc&page=%d&per_page=%d",
+            owner,
+            repo,
+            page,
+            perPage);
     return get(url);
   }
 }
