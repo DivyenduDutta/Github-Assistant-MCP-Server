@@ -21,6 +21,7 @@ public class GithubService {
 
   private static final int STALE_DAYS_THRESHOLD = 30;
   private static final int MAX_COMMENTS_FOR_CONTEXT = 5;
+  private static final int DEFAULT_ISSUE_LIMIT = 5;
 
   private final GithubHttpClient client;
 
@@ -30,18 +31,39 @@ public class GithubService {
 
   /**
    * Fetches a list of open issues from a specified GitHub repository and transforms them into
-   * `Issue` objects.
+   * `Issue` objects. This method provides a default limit of issues to ensure that the assistant
+   * has a manageable number of issues to work with for LLM context, while still giving a
+   * representative sample of the repository's current issues.
    *
    * @param owner The owner of the repository (e.g., "octocat").
    * @param repo The name of the repository (e.g., "Hello-World").
    * @return A list of Issue objects representing the open issues in the repository.
    */
   public List<Issue> listIssues(String owner, String repo) {
+    return this.listIssues(owner, repo, DEFAULT_ISSUE_LIMIT);
+  }
+
+  /**
+   * Fetches a list of open issues from a specified GitHub repository and transforms them into
+   * `Issue` objects. This method allows limiting the number of issues returned for better LLM
+   * context management.
+   *
+   * @param owner The owner of the repository (e.g., "octocat").
+   * @param repo The name of the repository (e.g., "Hello-World").
+   * @param numberOfIssues The maximum number of issues to return.
+   * @return A list of Issue objects representing the open issues in the repository.
+   */
+  public List<Issue> listIssues(String owner, String repo, int numberOfIssues) {
     JsonNode response = client.getIssues(owner, repo);
 
     List<Issue> issues = new ArrayList<>();
 
     for (JsonNode node : response) {
+
+      // Limit the number of issues returned for LLM context
+      if (issues.size() == numberOfIssues) {
+        break;
+      }
 
       // Skip pull requests (GitHub mixes them in)
       if (node.has("pull_request")) {

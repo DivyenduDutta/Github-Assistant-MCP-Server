@@ -54,6 +54,67 @@ public class GithubServiceTest {
   }
 
   @Test
+  public void testListIssuesLimited() {
+    String mockResponse =
+        """
+                    [
+                      {
+                        "number": 1,
+                        "title": "Test Issue",
+                        "state": "open",
+                        "user": {"login": "testuser"},
+                        "created_at": "2024-01-01T00:00:00Z"
+                      },
+                      {
+                        "number": 2,
+                        "title": "Test Issue 2",
+                        "state": "open",
+                        "user": {"login": "testuser2"},
+                        "created_at": "2024-02-01T00:00:00Z"
+                      },
+                      {
+                        "number": 3,
+                        "title": "Test Issue 3",
+                        "state": "open",
+                        "user": {"login": "testuser3"},
+                        "created_at": "2024-03-01T00:00:00Z"
+                      },
+                      {
+                        "number": 4,
+                        "title": "Test Issue 4",
+                        "state": "open",
+                        "user": {"login": "testuser4"},
+                        "created_at": "2024-04-01T00:00:00Z"
+                      },
+                      {
+                        "number": 5,
+                        "title": "Test Issue 5",
+                        "state": "open",
+                        "user": {"login": "testuser5"},
+                        "created_at": "2024-05-01T00:00:00Z"
+                      },
+                      {
+                        "number": 6,
+                        "title": "Test Issue 6",
+                        "state": "open",
+                        "user": {"login": "testuser6"},
+                        "created_at": "2024-06-01T00:00:00Z"
+                      }
+                    ]
+                """;
+    JsonNode res = objectMapper.readTree(mockResponse);
+
+    Mockito.doReturn(res).when(githubHttpClient).getIssues(any(String.class), any(String.class));
+
+    List<Issue> issues = githubService.listIssues("owner", "repo", 3);
+    assertEquals(3, issues.size());
+    Issue issue = issues.get(0);
+    assertEquals("Test Issue", issue.title());
+
+    Mockito.verify(githubHttpClient).getIssues(any(String.class), any(String.class));
+  }
+
+  @Test
   public void testGetIssue() {
     String mockIssueResponse =
         """

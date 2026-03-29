@@ -39,6 +39,23 @@ public class GithubAssistantToolsTest {
   }
 
   @Test
+  void testListIssuesLimited() {
+    List<Issue> mockIssues =
+        List.of(
+            new Issue(1, "Test Issue", "open", "testuser", "2024-01-01T00:00:00Z", 10),
+            new Issue(2, "Test Issue 2", "open", "testuser2", "2024-02-01T00:00:00Z", 20));
+
+    Mockito.when(githubService.listIssues("owner", "repo", 2)).thenReturn(mockIssues);
+
+    List<Issue> result = tools.listIssues("owner", "repo", 2);
+
+    assertEquals(2, result.size());
+    assertEquals("Test Issue 2", result.get(1).title());
+
+    Mockito.verify(githubService).listIssues("owner", "repo", 2);
+  }
+
+  @Test
   void testGetIssue() {
     IssueDetail mockIssue =
         new IssueDetail(

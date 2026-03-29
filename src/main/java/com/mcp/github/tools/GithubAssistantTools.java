@@ -29,12 +29,38 @@ public class GithubAssistantTools {
    *
    * @param owner The owner of the repository (e.g., "octocat").
    * @param repo The name of the repository (e.g., "Hello-World").
+   * @param numberOfIssues The maximum number of issues to return for better LLM context management.
    * @return A list of Issue objects representing the open issues in the repository.
    */
   @McpTool(
-      name = "list_issues",
+      name = "list_issues_limited",
       description =
           "Retrieve a list of open issues from a GitHub repository. Useful for understanding current work and pending bugs.")
+  public List<Issue> listIssues(
+      @ToolParam(description = "Repository owner, e.g. 'octocat'") String owner,
+      @ToolParam(description = "Repository name, e.g. 'Hello-World'") String repo,
+      @ToolParam(
+              description = "Maximum number of issues to return for better LLM context management")
+          int numberOfIssues) {
+    return githubService.listIssues(owner, repo, numberOfIssues);
+  }
+
+  /**
+   * Retrieves a default list of open issues from a specified GitHub repository. This tool is useful
+   * for understanding the current work and pending bugs in a repository. It takes the repository
+   * owner and name as parameters and returns a list of Issue objects representing the open issues,
+   * using a default limit to ensure manageable LLM context.
+   *
+   * @param owner The owner of the repository (e.g., "octocat").
+   * @param repo The name of the repository (e.g., "Hello-World").
+   * @return A list of Issue objects representing the open issues in the repository, limited to a
+   *     default number for better LLM context management.
+   */
+  @McpTool(
+      name = "list_issues_default",
+      description =
+          "Retrieve a list of open issues from a GitHub repository. Useful for understanding current work and pending "
+              + "bugs. This version uses a default limit to ensure manageable LLM context.")
   public List<Issue> listIssues(
       @ToolParam(description = "Repository owner, e.g. 'octocat'") String owner,
       @ToolParam(description = "Repository name, e.g. 'Hello-World'") String repo) {
