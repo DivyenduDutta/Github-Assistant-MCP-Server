@@ -1,9 +1,10 @@
 package com.mcp.github.tools;
 
 import com.mcp.github.constants.GithubConstants;
-import com.mcp.github.models.Issue;
-import com.mcp.github.models.IssueDetail;
-import com.mcp.github.models.PullRequestSummary;
+import com.mcp.github.models.issue.Issue;
+import com.mcp.github.models.issue.IssueDetail;
+import com.mcp.github.models.pr.PullRequestDetail;
+import com.mcp.github.models.pr.PullRequestSummary;
 import com.mcp.github.services.GithubService;
 import java.util.List;
 import org.springframework.ai.mcp.annotation.McpTool;
@@ -126,5 +127,17 @@ public class GithubAssistantTools {
     int resolvedPerPage = (perPage == null) ? GithubConstants.DEFAULT_PER_PAGE : perPage;
 
     return githubService.listPullRequests(owner, repo, resolvedPage, resolvedPerPage);
+  }
+
+  @McpTool(
+      name = "get_pull_request",
+      description =
+          "Get full details of a GitHub pull request including title, description, labels, recent comments, and computed metadata like days open and staleness.")
+  public PullRequestDetail getPullRequest(
+      @ToolParam(description = "Repository owner, e.g. 'octocat'") String owner,
+      @ToolParam(description = "Repository name, e.g. 'Hello-World'") String repo,
+      @ToolParam(description = "Pull Request number (not issue number), e.g. 123")
+          int pullRequestNumber) {
+    return githubService.getPullRequest(owner, repo, pullRequestNumber);
   }
 }

@@ -1,10 +1,12 @@
 package com.mcp.github.services;
 
 import com.mcp.github.client.GithubHttpClient;
-import com.mcp.github.models.Issue;
-import com.mcp.github.models.IssueComment;
-import com.mcp.github.models.IssueDetail;
-import com.mcp.github.models.PullRequestSummary;
+import com.mcp.github.models.issue.Issue;
+import com.mcp.github.models.issue.IssueComment;
+import com.mcp.github.models.issue.IssueDetail;
+import com.mcp.github.models.pr.PullRequestComment;
+import com.mcp.github.models.pr.PullRequestDetail;
+import com.mcp.github.models.pr.PullRequestSummary;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
@@ -22,9 +24,12 @@ import tools.jackson.databind.JsonNode;
 public class GithubService {
 
   private static final int STALE_DAYS_THRESHOLD = 30;
-  private static final int MAX_COMMENTS_FOR_CONTEXT = 5;
+  private static final int MAX_ISSUE_COMMENTS_FOR_CONTEXT = 5;
+  private static final int MAX_PR_COMMENTS_FOR_CONTEXT = 5;
   private static final int DEFAULT_ISSUE_LIMIT = 5;
   private static final int STALE_DAYS_FOR_PR = 14;
+  private static final int PR_LARGE_THRESHOLD_1 = 500;
+  private static final int PR_LARGE_THRESHOLD_2 = 10;
 
   private final GithubHttpClient client;
   private final Clock clock;
@@ -133,7 +138,8 @@ public class GithubService {
     }
 
     // Limit to first 5 comments for LLM context
-    List<IssueComment> limitedComments = comments.stream().limit(MAX_COMMENTS_FOR_CONTEXT).toList();
+    List<IssueComment> limitedComments =
+        comments.stream().limit(MAX_ISSUE_COMMENTS_FOR_CONTEXT).toList();
 
     int commentCount = limitedComments.size();
 
@@ -188,7 +194,7 @@ public class GithubService {
       String author = prNode.get("user").get("login").asString();
 
       // Branch info
-      String branch = prNode.get("head").get("ref").asString();
+      String headBranch = prNode.get("head").get("ref").asString();
       String baseBranch = prNode.get("base").get("ref").asString();
 
       // Labels
@@ -226,7 +232,7 @@ public class GithubService {
               title,
               state,
               author,
-              branch,
+              headBranch,
               baseBranch,
               labels,
               commentCount,
@@ -239,5 +245,96 @@ public class GithubService {
       result.add(pr);
     }
     return result;
+  }
+
+  public PullRequestDetail getPullRequest(String owner, String repo, int pullRequestNumber) {
+
+    JsonNode pullRequestNode = client.getPullRequest(owner, repo, pullRequestNumber);
+
+    // This looks confusing but GitHub's API returns pull requests as a special type of issue, so we
+    // need to fetch
+    // the comments using the issue comments endpoint
+    JsonNode pullRequestCommentsNode = client.getIssueComments(owner, repo, pullRequestNumber);
+
+    // Basic fields
+    int number = pullRequestNode.get("number").asInt();
+    String title = pullRequestNode.get("title").asString();
+    String body = pullRequestNode.get("body").asString("");
+    String state = pullRequestNode.get("state").asString();
+    String author = pullRequestNode.get("user").get("login").asString();
+
+    // Branch info
+    String headBranch = pullRequestNode.get("head").get("ref").asString();
+    String baseBranch = pullRequestNode.get("base").get("ref").asString();
+
+    // Labels
+    List<String> labels = new ArrayList<>();
+    for (JsonNode labelNode : pullRequestNode.get("labels")) {
+      labels.add(labelNode.get("name").asString());
+    }
+
+    // Comments
+    List<PullRequestComment> comments = new ArrayList<>();
+    for (JsonNode pullRequestCommentNode : pullRequestCommentsNode) {
+      String commentAuthor = pullRequestCommentNode.get("user").get("login").asString();
+      String commentBody = pullRequestNode.get("body").asString("");
+      String commentCreatedAt = pullRequestNode.get("created_at").asString();
+      comments.add(new PullRequestComment(commentAuthor, commentBody, commentCreatedAt));
+    }
+
+    // Limit to first 5 comments for LLM context
+    List<PullRequestComment> limitedComments =
+        comments.stream().limit(MAX_PR_COMMENTS_FOR_CONTEXT).toList();
+
+    int commentCount = limitedComments.size();
+
+    // Time fields
+    String createdAt = pullRequestNode.get("created_at").asString();
+    String updatedAt = pullRequestNode.get("updated_at").asString();
+
+    int daysOpen =
+        (int) ChronoUnit.DAYS.between(OffsetDateTime.parse(createdAt), OffsetDateTime.now(clock));
+
+    int daysSinceLastUpdate =
+        (int) ChronoUnit.DAYS.between(OffsetDateTime.parse(updatedAt), OffsetDateTime.now(clock));
+
+    // PR state
+    boolean isDraft = pullRequestNode.get("draft").asBoolean();
+    boolean isMerged =
+        pullRequestNode.get("merged_at") != null && !pullRequestNode.get("merged_at").isNull();
+
+    // Staleness logic (better than daysOpen)
+    boolean isStale = !isMerged && daysSinceLastUpdate > STALE_DAYS_FOR_PR;
+
+    // PR size metrics
+    int additions = pullRequestNode.get("additions").asInt(0);
+    int deletions = pullRequestNode.get("deletions").asInt(0);
+    int commits = pullRequestNode.get("commits").asInt(0);
+    int changedFiles = pullRequestNode.get("changed_files").asInt(0);
+    boolean isLarge =
+        (additions + deletions) > PR_LARGE_THRESHOLD_1
+            || (commits + changedFiles) > PR_LARGE_THRESHOLD_2;
+
+    return new PullRequestDetail(
+        number,
+        title,
+        body,
+        state,
+        author,
+        headBranch,
+        baseBranch,
+        labels,
+        isDraft,
+        isMerged,
+        isStale,
+        daysOpen,
+        daysSinceLastUpdate,
+        additions,
+        deletions,
+        commits,
+        changedFiles,
+        isLarge,
+        commentCount,
+        limitedComments);
   }
 }

@@ -108,7 +108,8 @@ public class GithubHttpClient {
   /**
    * Fetches the comments of a specific issue from a GitHub repository. It constructs the API URL
    * using the repository owner, name, and issue number, sends an authenticated GET request, and
-   * parses the JSON response into a JsonNode for further processing.
+   * parses the JSON response into a JsonNode for further processing. This method can also be used
+   * to fetch comments for pull requests, as pull requests are a special type of issue in GitHub.
    *
    * @param owner The owner of the repository (e.g., "octocat").
    * @param repo The name of the repository (e.g., "Hello-World").
@@ -154,6 +155,17 @@ public class GithubHttpClient {
             repo,
             page,
             perPage);
+    return get(url);
+  }
+
+  public JsonNode getPullRequest(String owner, String repo, int pullRequestNumber) {
+    if (pullRequestNumber < 1) {
+      throw new IllegalArgumentException("Pull request number must be positive");
+    }
+
+    String url =
+        String.format(
+            GITHUB_API_BASE_URL + "/repos/%s/%s/pulls/%d", owner, repo, pullRequestNumber);
     return get(url);
   }
 }
