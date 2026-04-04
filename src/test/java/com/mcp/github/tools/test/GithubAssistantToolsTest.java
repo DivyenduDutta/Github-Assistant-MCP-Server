@@ -2,10 +2,10 @@ package com.mcp.github.tools.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import com.mcp.github.models.Issue;
-import com.mcp.github.models.IssueComment;
-import com.mcp.github.models.IssueDetail;
-import com.mcp.github.models.PullRequestSummary;
+import com.mcp.github.models.issue.Issue;
+import com.mcp.github.models.issue.IssueComment;
+import com.mcp.github.models.issue.IssueDetail;
+import com.mcp.github.models.pr.PullRequestSummary;
 import com.mcp.github.services.GithubService;
 import com.mcp.github.tools.GithubAssistantTools;
 import java.util.List;

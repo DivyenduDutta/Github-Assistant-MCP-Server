@@ -1,4 +1,4 @@
-package com.mcp.github.models;
+package com.mcp.github.models.issue;
 
 import java.util.List;
 

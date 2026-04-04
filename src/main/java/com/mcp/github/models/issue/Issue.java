@@ -1,4 +1,4 @@
-package com.mcp.github.models;
+package com.mcp.github.models.issue;
 
 /**
  * Represents a GitHub issue with relevant details.

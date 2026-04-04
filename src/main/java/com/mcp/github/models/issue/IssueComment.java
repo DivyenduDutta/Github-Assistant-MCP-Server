@@ -1,4 +1,4 @@
-package com.mcp.github.models;
+package com.mcp.github.models.issue;
 
 /**
  * A simple data class representing a comment on a GitHub issue. This class is used to encapsulate
