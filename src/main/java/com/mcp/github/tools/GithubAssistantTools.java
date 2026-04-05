@@ -129,6 +129,20 @@ public class GithubAssistantTools {
     return githubService.listPullRequests(owner, repo, resolvedPage, resolvedPerPage);
   }
 
+  /**
+   * Retrieves detailed information about a specific GitHub pull request, including its title,
+   * description, labels, recent comments, and computed metadata such as days open and staleness.
+   * This tool is useful for gaining a comprehensive understanding of a pull request's status and
+   * history. It takes the repository owner, name, and pull request number as parameters and returns
+   * a PullRequestDetail object containing all relevant information about the pull request. Can
+   * retrieve details of both open and closed pull requests.
+   *
+   * @param owner The owner of the repository (e.g., "octocat").
+   * @param repo The name of the repository (e.g., "Hello-World").
+   * @param pullRequestNumber The number of the pull request to fetch details for.
+   * @return A PullRequestDetail object containing comprehensive information about the specified
+   *     pull request.
+   */
   @McpTool(
       name = "get_pull_request",
       description =

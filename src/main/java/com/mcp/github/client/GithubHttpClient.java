@@ -158,6 +158,19 @@ public class GithubHttpClient {
     return get(url);
   }
 
+  /**
+   * Fetches the details of a specific pull request from a GitHub repository. It constructs the API
+   * URL using the repository owner, name, and pull request number, sends an authenticated GET
+   * request, and parses the JSON response into a JsonNode for further processing. Can retrieve
+   * details of both open and closed pull requests.
+   *
+   * @param owner The owner of the repository (e.g., "octocat").
+   * @param repo The name of the repository (e.g., "Hello-World").
+   * @param pullRequestNumber The number of the pull request to fetch details for.
+   * @return A JsonNode representing the details of the specified pull request returned by the
+   *     GitHub API.
+   * @throws IllegalArgumentException if pullRequestNumber is less than 1.
+   */
   public JsonNode getPullRequest(String owner, String repo, int pullRequestNumber) {
     if (pullRequestNumber < 1) {
       throw new IllegalArgumentException("Pull request number must be positive");

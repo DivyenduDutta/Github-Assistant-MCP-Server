@@ -1,17 +1,14 @@
 package com.mcp.github.services;
 
 import com.mcp.github.client.GithubHttpClient;
-import com.mcp.github.models.issue.Issue;
-import com.mcp.github.models.issue.IssueComment;
-import com.mcp.github.models.issue.IssueDetail;
-import com.mcp.github.models.pr.PullRequestComment;
-import com.mcp.github.models.pr.PullRequestDetail;
-import com.mcp.github.models.pr.PullRequestSummary;
+import com.mcp.github.models.issue.*;
+import com.mcp.github.models.pr.*;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 
@@ -37,6 +34,39 @@ public class GithubService {
   public GithubService(GithubHttpClient client, Clock clock) {
     this.client = client;
     this.clock = clock;
+  }
+
+  /**
+   * Helper method to extract basic issue details from a JsonNode representing an issue. It checks
+   * if the node is a pull request and throws an exception if so, since this method is only meant
+   * for issues. It then extracts common fields like number, title, state, author, and labels to
+   * create an IssueBasic object.
+   *
+   * @param issueNode The JsonNode representing the issue data from GitHub's API.
+   * @return An IssueBasic object containing the extracted details of the issue.
+   * @throws RuntimeException if the provided JsonNode represents a pull request instead of an
+   *     issue.
+   */
+  private IssueBasic getIssueBasicDetails(JsonNode issueNode) {
+    // Skip pull requests (GitHub mixes them in)
+    if (issueNode.has("pull_request")) {
+      throw new RuntimeException("Requested item is a Pull Request, not an Issue");
+    }
+
+    // Basic fields
+    int number = issueNode.get("number").asInt();
+    String title = issueNode.get("title").asString();
+    String state = issueNode.get("state").asString();
+    String author = issueNode.get("user").get("login").asString();
+
+    // Labels
+    List<String> labels = new ArrayList<>();
+    for (JsonNode labelNode : issueNode.get("labels")) {
+      labels.add(labelNode.get("name").asString());
+    }
+
+    IssueBasic issueBasicDetails = new IssueBasic(number, title, state, author, labels);
+    return issueBasicDetails;
   }
 
   /**
@@ -75,21 +105,12 @@ public class GithubService {
         break;
       }
 
-      // Skip pull requests (GitHub mixes them in)
-      if (node.has("pull_request")) {
-        continue;
+      try {
+        Optional.ofNullable(getIssueBasicDetails(node))
+            .ifPresent(details -> issues.add(new Issue(details)));
+      } catch (RuntimeException ex) {
+        // continue;
       }
-
-      int number = node.get("number").asInt();
-      String title = node.get("title").asString();
-      String state = node.get("state").asString();
-      String author = node.get("user").get("login").asString();
-      String createdAt = node.get("created_at").asString();
-
-      long daysOpen =
-          ChronoUnit.DAYS.between(OffsetDateTime.parse(createdAt), OffsetDateTime.now(clock));
-
-      issues.add(new Issue(number, title, state, author, createdAt, (int) daysOpen));
     }
 
     return issues;
@@ -108,26 +129,11 @@ public class GithubService {
   public IssueDetail getIssue(String owner, String repo, int issueNumber) {
 
     JsonNode issueNode = client.getIssue(owner, repo, issueNumber);
-
-    // Skip pull requests (GitHub mixes them in)
-    if (issueNode.has("pull_request")) {
-      throw new RuntimeException("Requested item is a Pull Request, not an Issue");
-    }
-
     JsonNode commentsNode = client.getIssueComments(owner, repo, issueNumber);
 
-    // Basic fields
-    int number = issueNode.get("number").asInt();
-    String title = issueNode.get("title").asString();
     String body = issueNode.get("body").asString("");
-    String state = issueNode.get("state").asString();
-    String author = issueNode.get("user").get("login").asString();
 
-    // Labels
-    List<String> labels = new ArrayList<>();
-    for (JsonNode labelNode : issueNode.get("labels")) {
-      labels.add(labelNode.get("name").asString());
-    }
+    IssueBasic issueBasicDetails = getIssueBasicDetails(issueNode);
 
     // Comments
     List<IssueComment> comments = new ArrayList<>();
@@ -152,17 +158,88 @@ public class GithubService {
     // Simple "stale" logic
     boolean isStale = daysOpen > STALE_DAYS_THRESHOLD && commentCount == 0;
 
+    IssueStale issueStaleDetails = new IssueStale((int) daysOpen, isStale);
+
     return new IssueDetail(
-        number,
-        title,
-        body,
-        state,
-        author,
-        labels,
-        commentCount,
-        limitedComments,
-        (int) daysOpen,
-        isStale);
+        issueBasicDetails, issueStaleDetails, body, commentCount, limitedComments);
+  }
+
+  /**
+   * Helper method to extract basic pull request details from a JsonNode representing a pull
+   * request. It extracts common fields like number, title, state, author, and labels to create a
+   * PullRequestBasic object.
+   *
+   * @param prNode The JsonNode representing the pull request data from GitHub's API.
+   * @return A PullRequestBasic object containing the extracted details of the pull request.
+   */
+  private PullRequestBasic getPullRequestBasicDetails(JsonNode prNode) {
+    // Basic fields
+    int number = prNode.get("number").asInt();
+    String title = prNode.get("title").asString();
+    String state = prNode.get("state").asString();
+    String author = prNode.get("user").get("login").asString();
+
+    // Labels
+    List<String> labels = new ArrayList<>();
+    if (prNode.has("labels")) {
+      for (JsonNode labelNode : prNode.get("labels")) {
+        labels.add(labelNode.get("name").asString());
+      }
+    }
+
+    PullRequestBasic prBasic = new PullRequestBasic(number, title, state, author, labels);
+    return prBasic;
+  }
+
+  /**
+   * Helper method to extract branch information from a JsonNode representing a pull request. It
+   * retrieves the head and base branch names to create a PullRequestBranch object.
+   *
+   * @param prNode The JsonNode representing the pull request data from GitHub's API.
+   * @return A PullRequestBranch object containing the head and base branch information of the pull
+   *     request.
+   */
+  private PullRequestBranch getPullRequestBranchDetails(JsonNode prNode) {
+    // Branch info
+    String headBranch = prNode.get("head").get("ref").asString();
+    String baseBranch = prNode.get("base").get("ref").asString();
+
+    PullRequestBranch prBranch = new PullRequestBranch(headBranch, baseBranch);
+    return prBranch;
+  }
+
+  /**
+   * Helper method to determine the staleness of a pull request based on its creation and last
+   * update times, as well as its draft and merged status. It calculates the number of days the pull
+   * request has been open and the number of days since the last update to determine if it is stale
+   * according to defined criteria.
+   *
+   * @param prNode The JsonNode representing the pull request data from GitHub's API.
+   * @return A PullRequestStale object containing information about whether the pull request is a
+   *     draft, merged, stale, and the relevant time-based metrics.
+   */
+  private PullRequestStale getPullRequestStaleDetails(JsonNode prNode) {
+    // Time fields
+    String createdAt = prNode.get("created_at").asString();
+    String updatedAt = prNode.get("updated_at").asString();
+
+    int daysOpen =
+        (int) ChronoUnit.DAYS.between(OffsetDateTime.parse(createdAt), OffsetDateTime.now(clock));
+
+    int daysSinceLastUpdate =
+        (int) ChronoUnit.DAYS.between(OffsetDateTime.parse(updatedAt), OffsetDateTime.now(clock));
+
+    // PR state
+    boolean isDraft = prNode.get("draft").asBoolean();
+    boolean isMerged = prNode.get("merged_at") != null && !prNode.get("merged_at").isNull();
+
+    // Staleness logic (better than daysOpen)
+    boolean isStale = !isMerged && daysSinceLastUpdate > STALE_DAYS_FOR_PR;
+
+    PullRequestStale prStale =
+        new PullRequestStale(isDraft, isMerged, isStale, daysOpen, daysSinceLastUpdate);
+
+    return prStale;
   }
 
   /**
@@ -187,60 +264,11 @@ public class GithubService {
 
     for (JsonNode prNode : prArray) {
 
-      // Basic fields
-      int number = prNode.get("number").asInt();
-      String title = prNode.get("title").asString();
-      String state = prNode.get("state").asString();
-      String author = prNode.get("user").get("login").asString();
+      PullRequestBasic prBasic = getPullRequestBasicDetails(prNode);
+      PullRequestBranch prBranch = getPullRequestBranchDetails(prNode);
+      PullRequestStale prStale = getPullRequestStaleDetails(prNode);
 
-      // Branch info
-      String headBranch = prNode.get("head").get("ref").asString();
-      String baseBranch = prNode.get("base").get("ref").asString();
-
-      // Labels
-      List<String> labels = new ArrayList<>();
-      if (prNode.has("labels")) {
-        for (JsonNode labelNode : prNode.get("labels")) {
-          labels.add(labelNode.get("name").asString());
-        }
-      }
-
-      // Comments - defensive coding using .path() because "comments" might be missing in some
-      // versions of the API
-      int commentCount = prNode.path("comments").asInt(0);
-
-      // Time fields
-      String createdAt = prNode.get("created_at").asString();
-      String updatedAt = prNode.get("updated_at").asString();
-
-      int daysOpen =
-          (int) ChronoUnit.DAYS.between(OffsetDateTime.parse(createdAt), OffsetDateTime.now(clock));
-
-      int daysSinceLastUpdate =
-          (int) ChronoUnit.DAYS.between(OffsetDateTime.parse(updatedAt), OffsetDateTime.now(clock));
-
-      // PR state
-      boolean isDraft = prNode.get("draft").asBoolean();
-      boolean isMerged = prNode.get("merged_at") != null && !prNode.get("merged_at").isNull();
-
-      // Staleness logic (better than daysOpen)
-      boolean isStale = !isMerged && daysSinceLastUpdate > STALE_DAYS_FOR_PR;
-
-      PullRequestSummary pr =
-          new PullRequestSummary(
-              number,
-              title,
-              state,
-              author,
-              headBranch,
-              baseBranch,
-              labels,
-              commentCount,
-              daysOpen,
-              daysSinceLastUpdate,
-              isDraft,
-              isMerged,
-              isStale);
+      PullRequestSummary pr = new PullRequestSummary(prBasic, prBranch, prStale);
 
       result.add(pr);
     }
@@ -256,22 +284,10 @@ public class GithubService {
     // the comments using the issue comments endpoint
     JsonNode pullRequestCommentsNode = client.getIssueComments(owner, repo, pullRequestNumber);
 
-    // Basic fields
-    int number = pullRequestNode.get("number").asInt();
-    String title = pullRequestNode.get("title").asString();
     String body = pullRequestNode.get("body").asString("");
-    String state = pullRequestNode.get("state").asString();
-    String author = pullRequestNode.get("user").get("login").asString();
 
-    // Branch info
-    String headBranch = pullRequestNode.get("head").get("ref").asString();
-    String baseBranch = pullRequestNode.get("base").get("ref").asString();
-
-    // Labels
-    List<String> labels = new ArrayList<>();
-    for (JsonNode labelNode : pullRequestNode.get("labels")) {
-      labels.add(labelNode.get("name").asString());
-    }
+    PullRequestBasic prBasic = getPullRequestBasicDetails(pullRequestNode);
+    PullRequestBranch prBranch = getPullRequestBranchDetails(pullRequestNode);
 
     // Comments
     List<PullRequestComment> comments = new ArrayList<>();
@@ -288,23 +304,7 @@ public class GithubService {
 
     int commentCount = limitedComments.size();
 
-    // Time fields
-    String createdAt = pullRequestNode.get("created_at").asString();
-    String updatedAt = pullRequestNode.get("updated_at").asString();
-
-    int daysOpen =
-        (int) ChronoUnit.DAYS.between(OffsetDateTime.parse(createdAt), OffsetDateTime.now(clock));
-
-    int daysSinceLastUpdate =
-        (int) ChronoUnit.DAYS.between(OffsetDateTime.parse(updatedAt), OffsetDateTime.now(clock));
-
-    // PR state
-    boolean isDraft = pullRequestNode.get("draft").asBoolean();
-    boolean isMerged =
-        pullRequestNode.get("merged_at") != null && !pullRequestNode.get("merged_at").isNull();
-
-    // Staleness logic (better than daysOpen)
-    boolean isStale = !isMerged && daysSinceLastUpdate > STALE_DAYS_FOR_PR;
+    PullRequestStale prStale = getPullRequestStaleDetails(pullRequestNode);
 
     // PR size metrics
     int additions = pullRequestNode.get("additions").asInt(0);
@@ -315,26 +315,10 @@ public class GithubService {
         (additions + deletions) > PR_LARGE_THRESHOLD_1
             || (commits + changedFiles) > PR_LARGE_THRESHOLD_2;
 
+    PullRequestSize prSize =
+        new PullRequestSize(additions, deletions, commits, changedFiles, isLarge);
+
     return new PullRequestDetail(
-        number,
-        title,
-        body,
-        state,
-        author,
-        headBranch,
-        baseBranch,
-        labels,
-        isDraft,
-        isMerged,
-        isStale,
-        daysOpen,
-        daysSinceLastUpdate,
-        additions,
-        deletions,
-        commits,
-        changedFiles,
-        isLarge,
-        commentCount,
-        limitedComments);
+        prBasic, prBranch, prStale, prSize, body, commentCount, limitedComments);
   }
 }
