@@ -109,7 +109,7 @@ public class GithubService {
         Optional.ofNullable(getIssueBasicDetails(node))
             .ifPresent(details -> issues.add(new Issue(details)));
       } catch (RuntimeException ex) {
-        // continue;
+        continue;
       }
     }
 
