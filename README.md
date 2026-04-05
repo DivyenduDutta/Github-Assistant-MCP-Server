@@ -94,9 +94,15 @@ Always ensure to add or update unit tests for any new code/features and run all 
 
 Run 
 ```bash
-mvn clean package -DskipTests
+mvn -B clean verify -Pcoverage --file pom.xml
 ```
-to build the project and generate the jar file.
+to build the project, generate the jar file and get the test coverage report (SonarCloud uses this report to display 
+code coverage metrics). 
+
+The code coverage report can be 
+found in `{project.basedir}/code_coverage`. SonarCloud is also integrated for
+static code analysis and code coverage reporting. The SonarCloud badge at the top of this README reflects the current
+status of the project on SonarCloud.
 
 Process:
 
