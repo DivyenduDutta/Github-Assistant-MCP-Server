@@ -42,6 +42,7 @@ public class GithubServiceTest {
                 "title": "Test Issue",
                 "state": "open",
                 "user": {"login": "testuser"},
+                "labels": [{"name": "bug"}, {"name": "feature"}],
                 "created_at": "2024-01-15T00:00:00Z"
               },
               {
@@ -61,8 +62,7 @@ public class GithubServiceTest {
     List<Issue> issues = githubService.listIssues("owner", "repo");
     assertEquals(1, issues.size());
     Issue issue = issues.get(0);
-    assertEquals("Test Issue", issue.title());
-    assertEquals(5, issue.daysOpen());
+    assertEquals("Test Issue", issue.issueBasicDetails().title());
 
     Mockito.verify(githubHttpClient).getIssues(any(String.class), any(String.class));
   }
@@ -77,6 +77,7 @@ public class GithubServiceTest {
                         "title": "Test Issue",
                         "state": "open",
                         "user": {"login": "testuser"},
+                        "labels": [{"name": "bug"}, {"name": "feature"}],
                         "created_at": "2024-01-15T00:00:00Z"
                       },
                       {
@@ -84,6 +85,7 @@ public class GithubServiceTest {
                         "title": "Test Issue 2",
                         "state": "open",
                         "user": {"login": "testuser2"},
+                        "labels": [{"name": "bug"}, {"name": "feature"}],
                         "created_at": "2024-02-01T00:00:00Z"
                       },
                       {
@@ -91,6 +93,7 @@ public class GithubServiceTest {
                         "title": "Test Issue 3",
                         "state": "open",
                         "user": {"login": "testuser3"},
+                        "labels": [{"name": "bug"}, {"name": "feature"}],
                         "created_at": "2024-03-01T00:00:00Z"
                       },
                       {
@@ -98,6 +101,7 @@ public class GithubServiceTest {
                         "title": "Test Issue 4",
                         "state": "open",
                         "user": {"login": "testuser4"},
+                        "labels": [{"name": "bug"}, {"name": "feature"}],
                         "created_at": "2024-04-01T00:00:00Z"
                       },
                       {
@@ -105,6 +109,7 @@ public class GithubServiceTest {
                         "title": "Test Issue 5",
                         "state": "open",
                         "user": {"login": "testuser5"},
+                        "labels": [{"name": "bug"}, {"name": "feature"}],
                         "created_at": "2024-05-01T00:00:00Z"
                       },
                       {
@@ -112,6 +117,7 @@ public class GithubServiceTest {
                         "title": "Test Issue 6",
                         "state": "open",
                         "user": {"login": "testuser6"},
+                        "labels": [{"name": "bug"}, {"name": "feature"}],
                         "created_at": "2024-06-01T00:00:00Z"
                       }
                     ]
@@ -123,8 +129,7 @@ public class GithubServiceTest {
     List<Issue> issues = githubService.listIssues("owner", "repo", 3);
     assertEquals(3, issues.size());
     Issue issue = issues.get(0);
-    assertEquals("Test Issue", issue.title());
-    assertEquals(5, issue.daysOpen());
+    assertEquals("Test Issue", issue.issueBasicDetails().title());
 
     Mockito.verify(githubHttpClient).getIssues(any(String.class), any(String.class));
   }
@@ -168,9 +173,9 @@ public class GithubServiceTest {
         .getIssueComments(any(String.class), any(String.class), any(int.class));
 
     IssueDetail issue = githubService.getIssue("owner", "repo", 10);
-    assertEquals("Test Issue", issue.title());
+    assertEquals("Test Issue", issue.issueBasicDetails().title());
     assertEquals("testuser", issue.comments().get(0).author());
-    assertEquals(14, issue.daysOpen());
+    assertEquals(14, issue.issueStaleDetails().daysOpen());
 
     Mockito.verify(githubHttpClient).getIssue(any(String.class), any(String.class), any(int.class));
     Mockito.verify(githubHttpClient)
@@ -258,12 +263,12 @@ public class GithubServiceTest {
 
     List<PullRequestSummary> pullRequests = githubService.listPullRequests("owner", "repo", 1, 10);
     assertEquals(2, pullRequests.size());
-    assertEquals("Test PR 1", pullRequests.get(0).title());
-    assertEquals(2, pullRequests.get(0).labels().size());
-    assertFalse(pullRequests.get(0).isDraft());
-    assertFalse(pullRequests.get(1).isMerged());
-    assertEquals(19, pullRequests.get(0).daysOpen());
-    assertEquals(2, pullRequests.get(0).daysSinceLastUpdate());
+    assertEquals("Test PR 1", pullRequests.get(0).pullRequestBasicDetails().title());
+    assertEquals(2, pullRequests.get(0).pullRequestBasicDetails().labels().size());
+    assertFalse(pullRequests.get(0).pullRequestStaleDetails().isDraft());
+    assertFalse(pullRequests.get(1).pullRequestStaleDetails().isMerged());
+    assertEquals(19, pullRequests.get(0).pullRequestStaleDetails().daysOpen());
+    assertEquals(2, pullRequests.get(0).pullRequestStaleDetails().daysSinceLastUpdate());
 
     Mockito.verify(githubHttpClient)
         .getPullRequests(any(String.class), any(String.class), any(int.class), any(int.class));
