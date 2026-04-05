@@ -243,21 +243,64 @@ public class GithubHttpClientTest {
   }
 
   @Test
-  void testGetPullRequestsNegative() throws Exception {
-    HttpResponse<String> response = Mockito.mock(HttpResponse.class);
-
-    Mockito.when(response.statusCode()).thenReturn(401);
-    Mockito.when(response.body()).thenReturn("Unauthorized");
-
-    Mockito.doReturn(response)
-        .when(httpClient)
-        .send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
-
+  void testGetPullRequestsNegative() {
     IllegalArgumentException ex =
         assertThrows(
             IllegalArgumentException.class,
             () -> githubHttpClient.getPullRequests("owner", "repo", 1, -1));
 
     assertTrue(ex.getMessage().contains("page and perPage must be positive"));
+  }
+
+  @Test
+  void testGetPullRequestPositive() throws Exception {
+    String mockResponse =
+        """
+                                    {
+                                        "number": 1,
+                                        "title": "Test PR 1",
+                                        "state": "open",
+                                        "user": {"login": "testuser"},
+                                        "head": {
+                                            "ref": "feature-branch",
+                                            "sha": "abc123"
+                                        },
+                                         "base": {
+                                            "ref": "main",
+                                            "sha": "def456"
+                                        },
+                                         "labels": [{"name": "bug"}, {"name": "feature"}],
+                                         "comments": 5,
+                                         "created_at": "2024-01-01T00:00:00Z",
+                                        "updated_at": "2024-01-02T00:00:00Z",
+                                        "draft": false,
+                                        "merged_at": "2024-01-03T00:00:00Z"
+                                    }
+                                """;
+
+    HttpResponse<String> response = Mockito.mock(HttpResponse.class);
+
+    Mockito.when(response.statusCode()).thenReturn(200);
+    Mockito.when(response.body()).thenReturn(mockResponse);
+
+    Mockito.doReturn(response)
+        .when(httpClient)
+        .send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+
+    JsonNode result = githubHttpClient.getPullRequest("owner", "repo", 10);
+
+    assertNotNull(result);
+    assertFalse(result.isArray());
+    assertEquals(5, result.get("comments").asInt());
+  }
+
+  @Test
+  void testGetPullRequestNegative() {
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> githubHttpClient.getPullRequest("owner", "repo", -1));
+
+    assertTrue(ex.getMessage().contains("Pull request number must be positive"));
   }
 }
