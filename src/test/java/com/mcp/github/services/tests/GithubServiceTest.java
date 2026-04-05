@@ -4,8 +4,16 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 
 import com.mcp.github.client.GithubHttpClient;
-import com.mcp.github.models.Issue;
+import com.mcp.github.models.issue.Issue;
+import com.mcp.github.models.issue.IssueBasic;
+import com.mcp.github.models.issue.IssueDetail;
+import com.mcp.github.models.pr.*;
 import com.mcp.github.services.GithubService;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,8 +30,34 @@ public class GithubServiceTest {
   @BeforeEach
   void setUp() throws Exception {
     githubHttpClient = Mockito.mock(GithubHttpClient.class);
+    Clock fixedClock = Clock.fixed(Instant.parse("2024-01-20T00:00:00Z"), ZoneOffset.UTC);
     objectMapper = new ObjectMapper();
-    githubService = new GithubService(githubHttpClient);
+    githubService = new GithubService(githubHttpClient, fixedClock);
+  }
+
+  @Test
+  public void testGetIssueBasicDetails()
+      throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+    String mockIssueResponse =
+        """
+                        {
+                            "number": 1,
+                            "title": "Test Issue",
+                            "body" : "This is a test issue.",
+                            "state": "open",
+                            "user": {"login": "testuser"},
+                            "created_at": "2024-01-06T00:00:00Z",
+                            "labels": [{"name": "bug"}, {"name": "feature"}]
+                        }
+                        """;
+
+    JsonNode resIssue = objectMapper.readTree(mockIssueResponse);
+
+    Method method = GithubService.class.getDeclaredMethod("getIssueBasicDetails", JsonNode.class);
+    method.setAccessible(true);
+    IssueBasic issueBasicDetails = (IssueBasic) method.invoke(githubService, resIssue);
+    assertEquals("Test Issue", issueBasicDetails.title());
+    assertEquals("bug", issueBasicDetails.labels().get(0));
   }
 
   @Test
@@ -36,7 +70,16 @@ public class GithubServiceTest {
                 "title": "Test Issue",
                 "state": "open",
                 "user": {"login": "testuser"},
-                "created_at": "2024-01-01T00:00:00Z"
+                "labels": [{"name": "bug"}, {"name": "feature"}],
+                "created_at": "2024-01-15T00:00:00Z"
+              },
+              {
+                "pull_request": {},
+                "number": 2,
+                "title": "Test PR Issue",
+                "state": "open",
+                "user": {"login": "testuser"},
+                "created_at": "2024-01-15T00:00:00Z"
               }
             ]
         """;
@@ -47,8 +90,395 @@ public class GithubServiceTest {
     List<Issue> issues = githubService.listIssues("owner", "repo");
     assertEquals(1, issues.size());
     Issue issue = issues.get(0);
-    assertEquals("Test Issue", issue.title());
+    assertEquals("Test Issue", issue.issueBasicDetails().title());
 
     Mockito.verify(githubHttpClient).getIssues(any(String.class), any(String.class));
+  }
+
+  @Test
+  public void testListIssuesLimited() {
+    String mockResponse =
+        """
+                    [
+                      {
+                        "number": 1,
+                        "title": "Test Issue",
+                        "state": "open",
+                        "user": {"login": "testuser"},
+                        "labels": [{"name": "bug"}, {"name": "feature"}],
+                        "created_at": "2024-01-15T00:00:00Z"
+                      },
+                      {
+                        "number": 2,
+                        "title": "Test Issue 2",
+                        "state": "open",
+                        "user": {"login": "testuser2"},
+                        "labels": [{"name": "bug"}, {"name": "feature"}],
+                        "created_at": "2024-02-01T00:00:00Z"
+                      },
+                      {
+                        "number": 3,
+                        "title": "Test Issue 3",
+                        "state": "open",
+                        "user": {"login": "testuser3"},
+                        "labels": [{"name": "bug"}, {"name": "feature"}],
+                        "created_at": "2024-03-01T00:00:00Z"
+                      },
+                      {
+                        "number": 4,
+                        "title": "Test Issue 4",
+                        "state": "open",
+                        "user": {"login": "testuser4"},
+                        "labels": [{"name": "bug"}, {"name": "feature"}],
+                        "created_at": "2024-04-01T00:00:00Z"
+                      },
+                      {
+                        "number": 5,
+                        "title": "Test Issue 5",
+                        "state": "open",
+                        "user": {"login": "testuser5"},
+                        "labels": [{"name": "bug"}, {"name": "feature"}],
+                        "created_at": "2024-05-01T00:00:00Z"
+                      },
+                      {
+                        "number": 6,
+                        "title": "Test Issue 6",
+                        "state": "open",
+                        "user": {"login": "testuser6"},
+                        "labels": [{"name": "bug"}, {"name": "feature"}],
+                        "created_at": "2024-06-01T00:00:00Z"
+                      }
+                    ]
+                """;
+    JsonNode res = objectMapper.readTree(mockResponse);
+
+    Mockito.doReturn(res).when(githubHttpClient).getIssues(any(String.class), any(String.class));
+
+    List<Issue> issues = githubService.listIssues("owner", "repo", 3);
+    assertEquals(3, issues.size());
+    Issue issue = issues.get(0);
+    assertEquals("Test Issue", issue.issueBasicDetails().title());
+
+    Mockito.verify(githubHttpClient).getIssues(any(String.class), any(String.class));
+  }
+
+  @Test
+  public void testGetIssue() {
+    String mockIssueResponse =
+        """
+                {
+                    "number": 1,
+                    "title": "Test Issue",
+                    "body" : "This is a test issue.",
+                    "state": "open",
+                    "user": {"login": "testuser"},
+                    "created_at": "2024-01-06T00:00:00Z",
+                    "labels": [{"name": "bug"}, {"name": "feature"}]
+                }
+                """;
+
+    String mockIssueCommentsResponse =
+        """
+                [
+                    {
+                        "user": {"login": "testuser"},
+                        "body": "This is test issue comment."
+                    },
+                    {
+                        "user": {"login": "testuser1"},
+                        "body": "This is another test issue comment."
+                    }
+                ]
+                """;
+    JsonNode resIssue = objectMapper.readTree(mockIssueResponse);
+    JsonNode resIssueComments = objectMapper.readTree(mockIssueCommentsResponse);
+
+    Mockito.doReturn(resIssue)
+        .when(githubHttpClient)
+        .getIssue(any(String.class), any(String.class), any(int.class));
+    Mockito.doReturn(resIssueComments)
+        .when(githubHttpClient)
+        .getIssueComments(any(String.class), any(String.class), any(int.class));
+
+    IssueDetail issue = githubService.getIssue("owner", "repo", 10);
+    assertEquals("Test Issue", issue.issueBasicDetails().title());
+    assertEquals("testuser", issue.comments().get(0).author());
+    assertEquals(14, issue.issueStaleDetails().daysOpen());
+
+    Mockito.verify(githubHttpClient).getIssue(any(String.class), any(String.class), any(int.class));
+    Mockito.verify(githubHttpClient)
+        .getIssueComments(any(String.class), any(String.class), any(int.class));
+  }
+
+  @Test
+  void testGetIssueNegative() {
+    String mockResponse =
+        """
+                        {
+                            "pull_request": {},
+                            "number": 1,
+                            "title": "Test PR",
+                            "body" : "This is a test PR.",
+                            "state": "open",
+                            "user": {"login": "testuser"},
+                            "created_at": "2024-01-06T00:00:00Z",
+                            "labels": [{"name": "bug"}, {"name": "feature"}]
+                        }
+                        """;
+    JsonNode issueDetail = objectMapper.readTree(mockResponse);
+
+    Mockito.doReturn(issueDetail)
+        .when(githubHttpClient)
+        .getIssue(any(String.class), any(String.class), any(int.class));
+
+    RuntimeException ex =
+        assertThrows(RuntimeException.class, () -> githubService.getIssue("owner", "repo", 10));
+
+    assertTrue(ex.getMessage().contains("Requested item is a Pull Request, not an Issue"));
+  }
+
+  @Test
+  public void tesGetPullRequestBasicDetails()
+      throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+    String mockResponse =
+        """
+                                  {
+                                      "number": 1,
+                                      "title": "Test PR 1",
+                                      "state": "open",
+                                      "user": {"login": "testuser"},
+                                      "head": {
+                                          "ref": "feature-branch",
+                                          "sha": "abc123"
+                                      },
+                                       "base": {
+                                          "ref": "main",
+                                          "sha": "def456"
+                                      },
+                                       "labels": [{"name": "bug"}, {"name": "feature"}],
+                                       "comments": 5,
+                                       "created_at": "2024-01-01T00:00:00Z",
+                                      "updated_at": "2024-01-18T00:00:00Z",
+                                      "draft": false,
+                                      "merged_at": "2024-01-03T00:00:00Z"
+                                  }
+                              """;
+    JsonNode res = objectMapper.readTree(mockResponse);
+
+    Method method =
+        GithubService.class.getDeclaredMethod("getPullRequestBasicDetails", JsonNode.class);
+    method.setAccessible(true);
+    PullRequestBasic pullRequestBasicDetails = (PullRequestBasic) method.invoke(githubService, res);
+    assertEquals("Test PR 1", pullRequestBasicDetails.title());
+    assertEquals("testuser", pullRequestBasicDetails.author());
+  }
+
+  @Test
+  public void testGetPullRequestBranchDetails()
+      throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+    String mockResponse =
+        """
+                                    {
+                                        "number": 1,
+                                        "title": "Test PR 1",
+                                        "state": "open",
+                                        "user": {"login": "testuser"},
+                                        "head": {
+                                            "ref": "feature-branch",
+                                            "sha": "abc123"
+                                        },
+                                         "base": {
+                                            "ref": "main",
+                                            "sha": "def456"
+                                        },
+                                         "labels": [{"name": "bug"}, {"name": "feature"}],
+                                         "comments": 5,
+                                         "created_at": "2024-01-01T00:00:00Z",
+                                        "updated_at": "2024-01-18T00:00:00Z",
+                                        "draft": false,
+                                        "merged_at": "2024-01-03T00:00:00Z"
+                                    }
+                                """;
+
+    JsonNode resIssue = objectMapper.readTree(mockResponse);
+
+    Method method =
+        GithubService.class.getDeclaredMethod("getPullRequestBranchDetails", JsonNode.class);
+    method.setAccessible(true);
+    PullRequestBranch pullRequestBranch =
+        (PullRequestBranch) method.invoke(githubService, resIssue);
+    assertEquals("feature-branch", pullRequestBranch.headBranch());
+    assertEquals("main", pullRequestBranch.baseBranch());
+  }
+
+  @Test
+  public void testGetPullRequestStaleDetails()
+      throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+    String mockResponse =
+        """
+                                    {
+                                        "number": 1,
+                                        "title": "Test PR 1",
+                                        "state": "open",
+                                        "user": {"login": "testuser"},
+                                        "head": {
+                                            "ref": "feature-branch",
+                                            "sha": "abc123"
+                                        },
+                                         "base": {
+                                            "ref": "main",
+                                            "sha": "def456"
+                                        },
+                                         "labels": [{"name": "bug"}, {"name": "feature"}],
+                                         "comments": 5,
+                                         "created_at": "2024-01-01T00:00:00Z",
+                                        "updated_at": "2024-01-18T00:00:00Z",
+                                        "draft": false,
+                                        "merged_at": "2024-01-03T00:00:00Z"
+                                    }
+                                """;
+
+    JsonNode resIssue = objectMapper.readTree(mockResponse);
+
+    Method method =
+        GithubService.class.getDeclaredMethod("getPullRequestStaleDetails", JsonNode.class);
+    method.setAccessible(true);
+    PullRequestStale pullRequestStale = (PullRequestStale) method.invoke(githubService, resIssue);
+    assertFalse(pullRequestStale.isDraft());
+    assertEquals(19, pullRequestStale.daysOpen());
+  }
+
+  @Test
+  public void testListPullRequests() {
+    String mockResponse =
+        """
+                        [
+                            {
+                                "number": 1,
+                                "title": "Test PR 1",
+                                "state": "open",
+                                "user": {"login": "testuser"},
+                                "head": {
+                                    "ref": "feature-branch",
+                                    "sha": "abc123"
+                                },
+                                 "base": {
+                                    "ref": "main",
+                                    "sha": "def456"
+                                },
+                                 "labels": [{"name": "bug"}, {"name": "feature"}],
+                                 "comments": 5,
+                                 "created_at": "2024-01-01T00:00:00Z",
+                                "updated_at": "2024-01-18T00:00:00Z",
+                                "draft": false,
+                                "merged_at": "2024-01-03T00:00:00Z"
+                            },
+                            {
+                                "number": 2,
+                                "title": "Test PR 2",
+                                "state": "closed",
+                                "user": {"login": "testuser2"},
+                                "head": {
+                                    "ref": "bugfix-branch",
+                                    "sha": "abc123"
+                                },
+                                 "base": {
+                                    "ref": "main",
+                                    "sha": "def456"
+                                },
+                                 "labels": [{"name": "bug"}, {"name": "feature"}],
+                                "created_at": "2024-01-01T00:00:00Z",
+                                "updated_at": "2024-01-02T00:00:00Z",
+                                "draft": true,
+                                "merged_at": null
+                            }
+                        ]
+                        """;
+    JsonNode res = objectMapper.readTree(mockResponse);
+
+    Mockito.doReturn(res)
+        .when(githubHttpClient)
+        .getPullRequests(any(String.class), any(String.class), any(int.class), any(int.class));
+
+    List<PullRequestSummary> pullRequests = githubService.listPullRequests("owner", "repo", 1, 10);
+    assertEquals(2, pullRequests.size());
+    assertEquals("Test PR 1", pullRequests.get(0).pullRequestBasicDetails().title());
+    assertEquals(2, pullRequests.get(0).pullRequestBasicDetails().labels().size());
+    assertFalse(pullRequests.get(0).pullRequestStaleDetails().isDraft());
+    assertFalse(pullRequests.get(1).pullRequestStaleDetails().isMerged());
+    assertEquals(19, pullRequests.get(0).pullRequestStaleDetails().daysOpen());
+    assertEquals(2, pullRequests.get(0).pullRequestStaleDetails().daysSinceLastUpdate());
+
+    Mockito.verify(githubHttpClient)
+        .getPullRequests(any(String.class), any(String.class), any(int.class), any(int.class));
+  }
+
+  @Test
+  public void testListPullRequest() {
+    String mockResponse =
+        """
+                                    {
+                                        "number": 1,
+                                        "title": "Test PR 1",
+                                        "state": "open",
+                                        "user": {"login": "testuser"},
+                                        "body" : "This is a test PR.",
+                                        "head": {
+                                            "ref": "feature-branch",
+                                            "sha": "abc123"
+                                        },
+                                         "base": {
+                                            "ref": "main",
+                                            "sha": "def456"
+                                        },
+                                         "labels": [{"name": "bug"}, {"name": "feature"}],
+                                         "comments": 5,
+                                         "created_at": "2024-01-01T00:00:00Z",
+                                        "updated_at": "2024-01-18T00:00:00Z",
+                                        "draft": false,
+                                        "merged_at": "2024-01-03T00:00:00Z",
+                                        "additions": 100,
+                                        "deletions": 20,
+                                        "commits": 3,
+                                        "changed_files": 2
+                                    }
+                                """;
+    String mockPRCommentsResponse =
+        """
+                        [
+                            {
+                                "user": {"login": "testuser"},
+                                "body": "This is test issue comment.",
+                                "created_at": "2024-01-10T00:00:00Z"
+                            },
+                            {
+                                "user": {"login": "testuser1"},
+                                "body": "This is another test issue comment.",
+                                "created_at": "2024-01-15T00:00:00Z"
+                            }
+                        ]
+                        """;
+    JsonNode res = objectMapper.readTree(mockResponse);
+    JsonNode resPRComments = objectMapper.readTree(mockPRCommentsResponse);
+
+    Mockito.doReturn(res)
+        .when(githubHttpClient)
+        .getPullRequest(any(String.class), any(String.class), any(int.class));
+    Mockito.doReturn(resPRComments)
+        .when(githubHttpClient)
+        .getIssueComments(any(String.class), any(String.class), any(int.class));
+
+    PullRequestDetail pullRequestDetail = githubService.getPullRequest("owner", "repo", 10);
+    assertEquals("Test PR 1", pullRequestDetail.pullRequestBasicDetails().title());
+    assertEquals(2, pullRequestDetail.pullRequestBasicDetails().labels().size());
+    assertFalse(pullRequestDetail.pullRequestStaleDetails().isDraft());
+    assertTrue(pullRequestDetail.pullRequestStaleDetails().isMerged());
+    assertEquals(19, pullRequestDetail.pullRequestStaleDetails().daysOpen());
+    assertEquals(2, pullRequestDetail.pullRequestStaleDetails().daysSinceLastUpdate());
+    assertEquals("testuser1", pullRequestDetail.pullRequestComments().get(1).author());
+    assertEquals(3, pullRequestDetail.pullRequestSizeDetails().commits());
+
+    Mockito.verify(githubHttpClient)
+        .getPullRequest(any(String.class), any(String.class), any(int.class));
   }
 }
