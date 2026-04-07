@@ -34,3 +34,4 @@ build/
 
 ### Misc output files
 /output
+/code_coverage

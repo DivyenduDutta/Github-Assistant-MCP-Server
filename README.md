@@ -86,9 +86,21 @@ mvnw spotbugs:check
 mvnw pmd:check
 ```
 
-#### Unit tests
+#### Unit tests and Code coverage
 
 Always ensure to add or update unit tests for any new code/features and run all tests before pushing to remote.
+
+Run the below command to execute unit tests and generate code coverage report (for local analysis, if needed).
+```bash
+mvn clean test -Pcoverage
+```
+
+The code coverage report can be
+found in `{project.basedir}/code_coverage`. 
+
+SonarCloud is also integrated for
+static code analysis and code coverage reporting. The SonarCloud badge at the top of this README reflects the current
+status of the project on SonarCloud. All the SonarCloud integration is already handled by Github CI.
 
 ## Usage
 
